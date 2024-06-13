@@ -11,4 +11,5 @@ if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID) {
 export const config = {
   DISCORD_TOKEN,
   DISCORD_CLIENT_ID,
+  AUTO_REMOVE_TIME: 60 // minutes
 };

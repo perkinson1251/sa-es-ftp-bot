@@ -1,5 +1,7 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CommandInteraction, SlashCommandBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CommandInteraction, SlashCommandBuilder, TextChannel } from "discord.js";
 import { panel } from '../utils/panel';
+
+let queueChannel: TextChannel | null = null;
 
 export const data = new SlashCommandBuilder()
   .setName("start")
@@ -24,10 +26,16 @@ export async function execute(interaction: CommandInteraction) {
     .setStyle(ButtonStyle.Success)
     .setEmoji("🧑");
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(traineeButton, takeButton, ftoButton);
-  try {
-    await interaction.reply({ embeds: [panel], components: [row] });
-  } catch (error) {
-    console.error("Failed to send panel: ", error);
-  }
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(traineeButton, takeButton, ftoButton);
+    // await interaction.reply({ embeds: [panel], components: [row], fetchReply: true });
+    try {
+      queueChannel = interaction.channel as TextChannel;
+      await interaction.reply({ embeds: [panel], components: [row], fetchReply: true });
+    } catch (error) {
+      console.error("Failed to send panel: ", error);
+    }
+}
+
+export function getQueueChannel() {
+  return queueChannel;
 }

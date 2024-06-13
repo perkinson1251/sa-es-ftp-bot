@@ -1,22 +1,17 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
+import { IQueue } from '../interfaces/IQueue';
 import { panel } from './panel';
-
-interface QueueEntry {
-  id: string;
-  mention: string;
-  timestamp: number;
-}
 
 export default async function updateQueueMessage(
   channel: TextChannel, 
-  traineeQueue: QueueEntry[], 
-  ftoQueue: QueueEntry[], 
+  traineeQueue: IQueue[], 
+  ftoQueue: IQueue[], 
   clientUserId: string
 ) {
   const trainees = traineeQueue.map(t => `${t.mention} - <t:${t.timestamp}:R>`).join('\n') || 'Нет стажеров в очереди';
   const ftos = ftoQueue.map(t => `${t.mention} - <t:${t.timestamp}:R>`).join('\n') || 'Нет полевых офицеров в очереди';
 
-  const messages = await channel.messages.fetch({ limit: 100 });
+  const messages = await channel.messages.fetch();
   const queueMessage = messages.find(msg => msg.author.id === clientUserId && msg.embeds[0]?.title === 'FIELD TRAINING PROGRAM QUEUE');
   
   const embed = EmbedBuilder.from(panel).setFields(
