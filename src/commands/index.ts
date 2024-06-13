@@ -1,7 +1,5 @@
-import * as PingCommand from "./ping";
-import * as StartCommand from "./start";
+import * as FtpCommand from "./ftp";
 
 export const commands = {
-  ping: PingCommand,
-  start: StartCommand
+  ftp: FtpCommand
 };

@@ -1,10 +1,11 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, CommandInteraction, SlashCommandBuilder, TextChannel } from "discord.js";
+import logger from "../utils/logger";
 import { panel } from '../utils/panel';
 
 let queueChannel: TextChannel | null = null;
 
 export const data = new SlashCommandBuilder()
-  .setName("start")
+  .setName("ftp")
   .setDescription("Отправляет основную панель бота.");
 
 export async function execute(interaction: CommandInteraction) {
@@ -27,12 +28,11 @@ export async function execute(interaction: CommandInteraction) {
     .setEmoji("🧑");
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(traineeButton, takeButton, ftoButton);
-    // await interaction.reply({ embeds: [panel], components: [row], fetchReply: true });
     try {
       queueChannel = interaction.channel as TextChannel;
       await interaction.reply({ embeds: [panel], components: [row], fetchReply: true });
     } catch (error) {
-      console.error("Failed to send panel: ", error);
+      logger.error("Failed to send main panel: ", error);
     }
 }
 

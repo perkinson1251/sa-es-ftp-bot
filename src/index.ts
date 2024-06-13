@@ -1,13 +1,13 @@
 import { ButtonInteraction, Client, GatewayIntentBits, TextChannel } from "discord.js";
 import sendEmbedToUser from "utils/sendEmbed";
 import { commands } from "./commands";
-import { getQueueChannel } from "./commands/start";
+import { getQueueChannel } from "./commands/ftp";
 import { config } from "./config";
 import { deployCommands } from "./deploy-commands";
 import { IQueue } from "./interfaces/IQueue";
 import autoRemoveFromQueue from "./utils/autoRemoveFromQueue";
+import logger from "./utils/logger";
 import updateQueueMessage from "./utils/updateQueueMessage";
-
 
 let traineeQueue: IQueue[] = [];
 let ftoQueue: IQueue[] = [];
@@ -22,11 +22,11 @@ const client = new Client({
 });
 
 client.once("ready", async () => {
-  console.log(`Discord bot is ready! ${client.user?.username} is online.`);
+  logger.info(`${client.user?.username} is online.`);
   const guilds = await client.guilds.fetch();
-  console.log(`Bot is in ${guilds.size} guild(s).`);
+  logger.info(`Bot is in ${guilds.size} guild(s).`);
   guilds.forEach(async (guild) => {
-    console.log(`Deploying commands for guild: ${guild.id}`);
+    logger.info(`Deploying commands for guild: ${guild.id}`);
     await deployCommands({ guildId: guild.id });
   });
   setInterval(async () => {
@@ -39,32 +39,32 @@ client.once("ready", async () => {
 });
 
 client.on("guildCreate", async (guild) => {
-  console.log(`Bot added to guild: ${guild.id}`);
+  logger.info(`Bot added to guild: ${guild.id}`);
   await deployCommands({ guildId: guild.id });
 });
 
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isCommand()) {
     const { commandName } = interaction;
-    console.log(`Received command: ${commandName}`);
+    logger.info(`Received command: ${commandName}`);
     const command = commands[commandName as keyof typeof commands];
 
     if (command) {
       try {
-        console.log(`Executing command: ${commandName}`);
+        logger.info(`Executing command: ${commandName}`);
         await command.execute(interaction);
-        console.log(`Command executed: ${commandName}`);
+        logger.info(`Command executed: ${commandName}`);
       } catch (error) {
-        console.error(`Error executing ${commandName}:`, error);
+        logger.error(`Error executing ${commandName}:`, error);
         await interaction.reply({ content: "Что-то пошло не так...", ephemeral: true });
       }
     } else {
-      console.error(`Command not found: ${commandName}`);
+      logger.error(`Command not found: ${commandName}`);
     }
   }
   if (interaction.isButton()) {
     const customId = interaction.customId;
-    console.log(`Button pressed: ${customId}`);
+    logger.info(`Button pressed: ${customId}`);
     try {
       switch (customId) {
         case 'trainee':
@@ -81,18 +81,18 @@ client.on("interactionCreate", async (interaction) => {
           ftoQueue = await autoRemoveFromQueue(ftoQueue, "fto");
           break;
         default:
-          console.log(`Unhandled button: ${customId}`);
+          logger.info(`Unhandled button: ${customId}`);
       }
       await updateQueueMessage(interaction.channel as TextChannel, traineeQueue, ftoQueue, client.user?.id!); 
     } catch (error) {
-      console.error(`Error handling button interaction ${customId}:`, error);
+      logger.error(`Error handling button interaction ${customId}:`, error);
       await interaction.reply({ content: "Что-то пошло не так...", ephemeral: true });
     }
   }
 });
 
 async function handleTraineeButton(interaction: ButtonInteraction) {
-  console.log("Trainee button pressed");
+  logger.info("trainee button pressed");
   const userId = interaction.user.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
@@ -108,7 +108,7 @@ async function handleTraineeButton(interaction: ButtonInteraction) {
 }
 
 async function handleTakeButton(interaction: ButtonInteraction) {
-  console.log("Take button pressed");
+  logger.info("take button pressed");
   const ftoUserId = interaction.user.id;
   const ftoMention = `<@${ftoUserId}>`;
   const ftoIndex = ftoQueue.findIndex(t => t.id === ftoUserId);
@@ -146,7 +146,7 @@ async function handleTakeButton(interaction: ButtonInteraction) {
 }
 
 async function handleFtoButton(interaction: ButtonInteraction) {
-  console.log("FTO button pressed");
+  logger.info("fto button pressed");
   const userId = interaction.user.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
