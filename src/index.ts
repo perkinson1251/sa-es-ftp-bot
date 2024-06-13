@@ -33,8 +33,11 @@ client.once("ready", async () => {
     traineeQueue = await autoRemoveFromQueue(traineeQueue, "trainee");
     ftoQueue = await autoRemoveFromQueue(ftoQueue, "fto");
     const channel = getQueueChannel();
-    await updateQueueMessage(channel as TextChannel, traineeQueue, ftoQueue, client.user?.id!);
-    // await updateQueueMessage(client.channels.cache.get(id) as TextChannel, traineeQueue, ftoQueue, client.user?.id!); 
+    if (channel) {
+      await updateQueueMessage(channel as TextChannel, traineeQueue, ftoQueue, client.user?.id!);
+    } else {
+      logger.warn("Queue channel is null, cannot update queue message.");
+    }
   }, 60 * 1000);
 });
 
@@ -92,7 +95,6 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 async function handleTraineeButton(interaction: ButtonInteraction) {
-  logger.info("trainee button pressed");
   const userId = interaction.user.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
@@ -108,7 +110,6 @@ async function handleTraineeButton(interaction: ButtonInteraction) {
 }
 
 async function handleTakeButton(interaction: ButtonInteraction) {
-  logger.info("take button pressed");
   const ftoUserId = interaction.user.id;
   const ftoMention = `<@${ftoUserId}>`;
   const ftoIndex = ftoQueue.findIndex(t => t.id === ftoUserId);
@@ -146,7 +147,6 @@ async function handleTakeButton(interaction: ButtonInteraction) {
 }
 
 async function handleFtoButton(interaction: ButtonInteraction) {
-  logger.info("fto button pressed");
   const userId = interaction.user.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
