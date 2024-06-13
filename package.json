@@ -1,15 +1,33 @@
 {
   "name": "ftp-bot",
+  "description": "Discord bot for FTP system",
   "version": "1.0.0",
-  "description": "",
+  "homepage": "https://github.com/perkinson1251/sa-es-ftp-bot",
   "main": "index.js",
+  "bugs": {
+    "url": "https://github.com/perkinson1251/sa-es-ftp-bot/issues",
+    "email": "saesperkinson@gmail.com"
+  },
+  "author": {
+    "name": "Roman \"perkinson\"",
+    "url": "https://github.com/perkinson1251",
+    "email": "saesperkinson@gmail.com"
+  },
+  "repository": {
+    "url": "https://github.com/perkinson1251/sa-es-ftp-bot"
+  },
+  "engines": {
+    "node": ">=20.12.2",
+    "npm": ">=10.5.0"
+  },
+  "keywords": [
+    "discord", "js", "ts", "gta-sa", "sa-es"
+  ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsup src/index.ts --minify"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.15.3",
