@@ -1,7 +1,7 @@
-import { User } from "discord.js";
+import { Embed, User } from "discord.js";
 import logger from "./logger";
 
-export default async function sendEmbedToUser(user: User, embed: any) {
+export default async function sendEmbedToUser(user: User, embed: Embed) {
   try {
     await user.send({ embeds: [embed] });
   } catch (error) {
