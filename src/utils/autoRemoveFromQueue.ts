@@ -1,5 +1,6 @@
 import { config } from "../config";
 import { IQueue } from "../interfaces/IQueue";
+import Queue from "../models/Queue";
 import logger from "./logger";
 
 const autoRemoveFromQueue = async (
@@ -15,10 +16,15 @@ const autoRemoveFromQueue = async (
     const removedMembers = queue.filter(
       (member) => now - member.timestamp >= config.AUTO_REMOVE_TIME * 60
     );
-    removedMembers.forEach((member) => {
+    removedMembers.forEach(async (member) => {
       logger.info(
         `${type === "trainee" ? "Trainee" : "FTO"} ${member.mention} was removed from the queue when time expired.`
       );
+      try {
+        await Queue.deleteOne({ _id: member._id });
+      } catch (error) {
+        logger.error(`Error deleting ${type} from queue: ${error}`);
+      }
     });
   }
 

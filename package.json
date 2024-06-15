@@ -1,7 +1,7 @@
 {
   "name": "ftp-bot",
   "description": "Discord bot for FTP system",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "homepage": "https://github.com/perkinson1251/sa-es-ftp-bot",
   "main": "index.js",
   "bugs": {
@@ -39,6 +39,7 @@
   "dependencies": {
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
+    "mongoose": "^8.4.1",
     "winston": "^3.13.0"
   },
   "devDependencies": {

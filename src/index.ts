@@ -1,21 +1,14 @@
-import {
-  ButtonInteraction,
-  Client,
-  GatewayIntentBits,
-  TextChannel,
-} from "discord.js";
+import { connectDB } from "database";
+import { ButtonInteraction, Client, GatewayIntentBits } from "discord.js";
+import ServerSettings from "models/ServerSettings";
+import { logToChannel } from "utils/logToChannel";
 import sendEmbedToUser from "utils/sendEmbed";
+import { updateQueues } from "utils/updateQueues";
 import { commands } from "./commands";
-import { getQueueChannel } from "./commands/ftp";
 import { config } from "./config";
 import { deployCommands } from "./deploy-commands";
-import { IQueue } from "./interfaces/IQueue";
-import autoRemoveFromQueue from "./utils/autoRemoveFromQueue";
+import Queue from "./models/Queue";
 import logger from "./utils/logger";
-import updateQueueMessage from "./utils/updateQueueMessage";
-
-let traineeQueue: IQueue[] = [];
-let ftoQueue: IQueue[] = [];
 
 const client = new Client({
   intents: [
@@ -28,25 +21,17 @@ const client = new Client({
 
 client.once("ready", async () => {
   logger.info(`${client.user?.username} is online.`);
+  await connectDB();
   const guilds = await client.guilds.fetch();
-  logger.info(`Bot is in ${guilds.size} guild(s).`);
   guilds.forEach(async (guild) => {
     logger.info(`Deploying commands for guild: ${guild.id}`);
     await deployCommands({ guildId: guild.id });
   });
   setInterval(async () => {
-    traineeQueue = await autoRemoveFromQueue(traineeQueue, "trainee");
-    ftoQueue = await autoRemoveFromQueue(ftoQueue, "fto");
-    const channel = getQueueChannel();
-    if (channel) {
-      await updateQueueMessage(
-        channel as TextChannel,
-        traineeQueue,
-        ftoQueue,
-        client.user?.id ?? ""
-      );
-    } else {
-      logger.warn("Queue channel is null, cannot update queue message.");
+    try {
+      await updateQueues(client);
+    } catch (error) {
+      logger.error("Failed to update queues:", error);
     }
   }, 60 * 1000);
 });
@@ -85,26 +70,17 @@ client.on("interactionCreate", async (interaction) => {
       switch (customId) {
         case "trainee":
           await handleTraineeButton(interaction);
-          traineeQueue = await autoRemoveFromQueue(traineeQueue, "trainee");
           break;
         case "take":
           await handleTakeButton(interaction);
-          traineeQueue = await autoRemoveFromQueue(traineeQueue, "trainee");
-          ftoQueue = await autoRemoveFromQueue(ftoQueue, "fto");
           break;
         case "fto":
           await handleFtoButton(interaction);
-          ftoQueue = await autoRemoveFromQueue(ftoQueue, "fto");
           break;
         default:
           logger.info(`Unhandled button: ${customId}`);
       }
-      await updateQueueMessage(
-        interaction.channel as TextChannel,
-        traineeQueue,
-        ftoQueue,
-        client.user?.id ?? ""
-      );
+      await updateQueues(client);
     } catch (error) {
       logger.error(`Error handling button interaction ${customId}:`, error);
       await interaction.reply({
@@ -117,102 +93,142 @@ client.on("interactionCreate", async (interaction) => {
 
 async function handleTraineeButton(interaction: ButtonInteraction) {
   const userId = interaction.user.id;
+  const guildId = interaction.guild?.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
-  const traineeIndex = traineeQueue.findIndex((t) => t.id === userId);
-  if (traineeIndex === -1) {
-    traineeQueue.push({ id: userId, mention, timestamp });
+
+  const ftpLoggingChannelId = ServerSettings.findOne({ guildId });
+
+  const existingEntry = await Queue.findOne({
+    guildId,
+    userId,
+    type: "trainee",
+  });
+
+  if (!existingEntry) {
+    await Queue.create({
+      guildId,
+      userId,
+      mention,
+      timestamp,
+      type: "trainee",
+    });
     await interaction.reply({
       content: `Вы встали в очередь как стажер.`,
       ephemeral: true,
     });
+    logger.info(`Trainee ${userId} in guild ${guildId} added to queue.`);
+    await logToChannel(
+      interaction.client,
+      guildId!,
+      `Стажёр <@${userId}> встал в очередь стажёров.`
+    );
   } else {
-    traineeQueue.splice(traineeIndex, 1);
+    await Queue.deleteOne({ guildId, userId, type: "trainee" });
     await interaction.reply({
       content: `Вы вышли из очереди.`,
       ephemeral: true,
     });
+    logger.info(`Trainee ${userId} in guild ${guildId} left the queue.`);
+    await logToChannel(
+      interaction.client,
+      guildId!,
+      `Стажёр <@${userId}> самостоятельно вышел из очереди.`
+    );
   }
-  await updateQueueMessage(
-    interaction.channel as TextChannel,
-    traineeQueue,
-    ftoQueue,
-    client.user?.id ?? ""
-  );
 }
 
 async function handleTakeButton(interaction: ButtonInteraction) {
+  const guildId = interaction.guild?.id;
   const ftoUserId = interaction.user.id;
   const ftoMention = `<@${ftoUserId}>`;
-  const ftoIndex = ftoQueue.findIndex((t) => t.id === ftoUserId);
-  if (ftoIndex !== -1) ftoQueue.splice(ftoIndex, 1);
-  if (traineeQueue.length === 0) {
+
+  await Queue.deleteOne({ guildId, userId: ftoUserId, type: "fto" });
+  const trainee = await Queue.findOne({ guildId, type: "trainee" }).sort({
+    timestamp: 1,
+  });
+  if (ftoUserId === trainee?.userId) {
+    await interaction.reply({
+      content: "Вы не можете взять сами себя.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (!trainee) {
     await interaction.reply({
       content: "Очередь стажеров пуста.",
       ephemeral: true,
     });
-  } else {
-    const trainee = traineeQueue.shift();
-    await interaction.channel?.send(
-      `Наставник ${ftoMention} взял стажера ${trainee?.mention}.`
-    );
-
-    const guild = interaction.guild!;
-    const guildAvatarURL = guild.iconURL() || undefined;
-    const embed = {
-      color: 0x8260d2,
-      author: {
-        name: "Developed by perkinson for SA-ES",
-        iconURL: "https://gambit-rp.ru/assets/static/images/logotypeDrag.png",
-        url: "https://github.com/perkinson1251",
-      },
-      title: `Вы были взяты наставником`,
-      description: `${ftoMention} вас взял в качетсве своего напарника. Свяжитесь с вашим новым наставником.`,
-      timestamp: new Date().toISOString(),
-      footer: {
-        text: `Оповещение,  ${guild.name}`,
-      },
-      thumbnail: {
-        url: guildAvatarURL ?? "",
-      },
-    };
-
-    const traineeMember = await guild.members.fetch(trainee!.id);
-    // @ts-expect-error: Temporary workaround until correct type for embed is resolved
-    await sendEmbedToUser(traineeMember.user, embed);
-    await updateQueueMessage(
-      interaction.channel as TextChannel,
-      traineeQueue,
-      ftoQueue,
-      client.user?.id ?? ""
-    );
+    return;
   }
+
+  await Queue.deleteOne({ guildId, userId: trainee.userId, type: "trainee" });
+  logger.info(
+    `FTO ${ftoUserId} in guild ${guildId} took an trainee ${trainee.id}.`
+  );
+  await logToChannel(
+    interaction.client,
+    guildId!,
+    `FTO ${ftoMention} взял из очереди стажёра ${trainee.mention}.`
+  );
+  const guild = interaction.guild!;
+  const guildAvatarURL = guild.iconURL() || undefined;
+  const embed = {
+    color: 0x8260d2,
+    author: {
+      name: "Developed by perkinson for SA-ES",
+      iconURL: "https://gambit-rp.ru/assets/static/images/logotypeDrag.png",
+      url: "https://github.com/perkinson1251",
+    },
+    title: `Вы были взяты наставником`,
+    description: `${ftoMention} вас взял в качестве своего напарника. Свяжитесь с вашим новым наставником.`,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: `Оповещение, ${guild.name}`,
+    },
+    thumbnail: {
+      url: guildAvatarURL ?? "",
+    },
+  };
+  const traineeMember = await guild.members.fetch(trainee.userId);
+  // @ts-expect-error: Temporary workaround until correct type for embed is resolved
+  await sendEmbedToUser(traineeMember.user, embed);
 }
 
 async function handleFtoButton(interaction: ButtonInteraction) {
   const userId = interaction.user.id;
+  const guildId = interaction.guild?.id;
   const mention = `<@${userId}>`;
   const timestamp = Math.floor(Date.now() / 1000);
-  const ftoIndex = ftoQueue.findIndex((t) => t.id === userId);
-  if (ftoIndex === -1) {
-    ftoQueue.push({ id: userId, mention, timestamp });
+
+  const existingEntry = await Queue.findOne({ guildId, userId, type: "fto" });
+
+  if (!existingEntry) {
+    await Queue.create({ guildId, userId, mention, timestamp, type: "fto" });
     await interaction.reply({
       content: `Вы встали в очередь как наставник.`,
       ephemeral: true,
     });
+    logger.info(`FTO ${userId} in guild ${guildId} added to queue.`);
+    await logToChannel(
+      interaction.client,
+      guildId!,
+      `FTO <@${userId}> встал в очередь наставников.`
+    );
   } else {
-    ftoQueue.splice(ftoIndex, 1);
+    await Queue.deleteOne({ guildId, userId, type: "fto" });
     await interaction.reply({
       content: `Вы вышли из очереди.`,
       ephemeral: true,
     });
+    logger.info(`FTO ${userId} in guild ${guildId} left the queue.`);
+    await logToChannel(
+      interaction.client,
+      guildId!,
+      `FTO <@${userId}> самостоятельно вышел из очереди.`
+    );
   }
-  await updateQueueMessage(
-    interaction.channel as TextChannel,
-    traineeQueue,
-    ftoQueue,
-    client.user?.id ?? ""
-  );
 }
 
 client.login(config.DISCORD_TOKEN);
