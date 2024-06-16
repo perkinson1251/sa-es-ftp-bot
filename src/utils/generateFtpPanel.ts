@@ -1,3 +1,4 @@
+import { config } from "config";
 import { EmbedBuilder } from "discord.js";
 import Queue from "../models/Queue";
 
@@ -21,7 +22,7 @@ export const generateFtpPanel = async (guildId: string) => {
       iconURL: "https://gambit-rp.ru/assets/static/images/logotypeDrag.png",
     })
     .setDescription(
-      "Система очереди для стажеров и их наставников. Автокик стажёра из очереди происходит через 1 час ожидания.\n\nИнструкция:\n**СТАЖЕР** - встать/выйти из очереди, используется стажёрами.\n**ВЗЯТЬ** - взять первого в очереди стажёра, используется FTO.\n**ФТО** - встать/выйти из очереди, используется FTO."
+      `Система очереди для стажеров и их наставников. Автокик стажёра из очереди происходит через ${config.AUTO_REMOVE_TIME} минут ожидания.\n\nИнструкция:\n**СТАЖЕР** - встать/выйти из очереди, используется стажёрами.\n**ВЗЯТЬ** - взять первого в очереди стажёра, используется FTO.\n**ФТО** - встать/выйти из очереди, используется FTO.`
     )
     .addFields(
       { name: "СТАЖЕРЫ", value: trainees, inline: true },

@@ -12,5 +12,5 @@ export const config = {
   DISCORD_TOKEN,
   DISCORD_CLIENT_ID,
   DB_URI,
-  AUTO_REMOVE_TIME: 1, // minutes
+  AUTO_REMOVE_TIME: 180, // minutes
 };
