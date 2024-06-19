@@ -5,8 +5,9 @@ import {
   SlashCommandBuilder,
   TextChannel,
 } from "discord.js";
-import ServerSettings from "../models/ServerSettings";
-import logger from "../utils/logger";
+import ServerSettings from "models/ServerSettings";
+import isAdmin from "utils/checkAdmin";
+import logger from "utils/logger";
 
 export const data = new SlashCommandBuilder()
   .setName("ftplogchannel")
@@ -28,6 +29,13 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction: CommandInteraction) {
+  if (!isAdmin(interaction)) {
+    await interaction.reply({
+      content: "У вас нет прав для выполнения этой команды.",
+      ephemeral: true,
+    });
+    return;
+  }
   const guildId = interaction.guild!.id;
   const options = interaction.options as CommandInteractionOptionResolver;
   const channelOption = options.getChannel("channel", false);
@@ -56,7 +64,7 @@ export async function execute(interaction: CommandInteraction) {
       if (!serverSettings) {
         serverSettings = new ServerSettings({
           guildId,
-          logChannelId: channelId,
+          ftpLogChannelId: channelId,
         });
       } else {
         serverSettings.ftpLogChannelId = channelId;
