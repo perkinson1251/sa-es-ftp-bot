@@ -1,7 +1,9 @@
 FROM node:20
-WORKDIR /app
-COPY package.json package-lock.json ./
+WORKDIR /saes/bot
+COPY ./package.json ./
 RUN npm install
-COPY . .
+COPY ./src ./src
+COPY ./.env ./
+COPY ./tsconfig.json ./
 RUN npm run build
 CMD ["npm", "start"]

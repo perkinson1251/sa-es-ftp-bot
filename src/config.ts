@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const { DISCORD_TOKEN, DISCORD_CLIENT_ID } = process.env;
+const { DISCORD_TOKEN, DISCORD_CLIENT_ID, DB_URI } = process.env;
 
 if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID) {
   throw new Error("Missing environment variables");
@@ -11,5 +11,6 @@ if (!DISCORD_TOKEN || !DISCORD_CLIENT_ID) {
 export const config = {
   DISCORD_TOKEN,
   DISCORD_CLIENT_ID,
-  AUTO_REMOVE_TIME: 60, // minutes
+  DB_URI,
+  AUTO_REMOVE_TIME: 180, // minutes
 };
