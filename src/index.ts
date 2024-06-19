@@ -3,6 +3,9 @@ import { config } from "config";
 import { connectDB } from "database";
 import { deployCommands } from "deploy-commands";
 import { Client, GatewayIntentBits } from "discord.js";
+import { handleSubmitCalloutForm } from "handlers/callout/calloutHandler";
+import { handleDeleteDivisionSelectMenuInteraction } from "handlers/divisions/deleteDivisionHandler";
+import { handleSelectDivisionForCallout } from "handlers/divisions/selectDivisionForCallotHandler";
 import { handleFtpButtons } from "handlers/ftp/ftpButtonsHandler";
 import logger from "utils/logger";
 import { updateQueues } from "utils/updateQueues";
@@ -67,6 +70,51 @@ client.on("interactionCreate", async (interaction) => {
       await updateQueues(client);
     } catch (error) {
       logger.error(`Error handling button interaction ${customId}:`, error);
+      await interaction.reply({
+        content: "Что-то пошло не так...",
+        ephemeral: true,
+      });
+    }
+  }
+  if (interaction.isStringSelectMenu()) {
+    const customId = interaction.customId;
+    try {
+      switch (customId) {
+        case "delete-selected-division":
+          await handleDeleteDivisionSelectMenuInteraction(interaction);
+          break;
+        case "select-division-for-callout":
+          await handleSelectDivisionForCallout(interaction);
+          break;
+        default:
+          logger.info(`Unhandled select menu: ${customId}`);
+      }
+    } catch (error) {
+      logger.error(
+        `Error handling select menu interaction ${customId}:`,
+        error
+      );
+      await interaction.reply({
+        content: "Что-то пошло не так...",
+        ephemeral: true,
+      });
+    }
+  }
+  if (interaction.isModalSubmit()) {
+    const customId = interaction.customId;
+    try {
+      switch (customId) {
+        case "calloutInfoModal":
+          await handleSubmitCalloutForm(interaction);
+          break;
+        default:
+          logger.info(`Unhandled modal submit: ${customId}`);
+      }
+    } catch (error) {
+      logger.error(
+        `Error handling modal submit interaction ${customId}:`,
+        error
+      );
       await interaction.reply({
         content: "Что-то пошло не так...",
         ephemeral: true,
